@@ -138,6 +138,15 @@
       <span class="badge" id="badge-movimiento">Movimiento: —</span>
       <span class="badge" id="badge-hora">Hora: —</span>
     </div>
+    <!-- NUEVO: control de cámara -->
+    <label class="field" for="input-camara">Fuente de cámara (índice local o URL IP Webcam)</label>
+    <div class="btn-row">
+      <input type="text" id="input-camara" placeholder="0, 1... o http://192.168.x.x:8080/video"
+            style="flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px;
+                    border-radius:6px; border:1px solid var(--panel-line);
+                    background:#0e1729; color:var(--text);">
+      <button class="btn" id="btn-cambiar-camara">Cambiar</button>
+    </div>
   </div>
 
   <!-- PANEL 2: ARDUINO + PROTOBOARD -->
@@ -310,6 +319,23 @@
     setActivo('btn-off');
     agregarLog('Control manual: forzar APAGADO');
   });
+  document.getElementById('btn-cambiar-camara').addEventListener('click', () => {
+    const valor = document.getElementById('input-camara').value.trim();
+    if (!valor) return;
+    socket.emit('cambiar_camara', { camara: valor });
+    agregarLog(`Solicitando cambio de cámara a "${valor}"…`);
+  });
+
+  socket.on('resultado_cambio_camara', (data) => {
+    agregarLog(
+      (data.exito ? '✅ ' : '⚠️ ') + data.mensaje + ` (fuente: ${data.camara})`
+    );
+    if (data.exito) {
+      // El video puede tardar 1-2 frames en refrescar con la nueva fuente
+      videoPlaceholder.style.display = 'none';
+    }
+  });
+
   function setActivo(id){
     ['btn-auto','btn-on','btn-off'].forEach(b => document.getElementById(b).classList.remove('on'));
     document.getElementById(id).classList.add('on');

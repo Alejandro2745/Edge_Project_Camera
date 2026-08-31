@@ -123,4 +123,41 @@ class DetectorPresencia:
             "hora": time.strftime("%H:%M:%S"),
         }
         return frame, estado
+    
+    def cambiar_camara(self, nuevo_index) -> bool:
+        """
+        Cambia la fuente de video en caliente (sin reiniciar el proceso).
+        Acepta un índice local (int) o una URL de cámara IP (str).
+        Retorna True si la nueva cámara se abrió correctamente; si falla,
+        se intenta restaurar la cámara anterior para no dejar el sistema
+        sin video.
+        """
+        anterior_index = self.camera_index
+        anterior_cap = self.cap
+    
+        self.camera_index = nuevo_index
+        self.es_camara_red = isinstance(nuevo_index, str)
+    
+        nuevo_cap = cv2.VideoCapture(self.camera_index)
+        if self.es_camara_red:
+            try:
+                nuevo_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            except Exception:
+                pass
+    
+        if not nuevo_cap.isOpened():
+            # Rollback: nos quedamos con la cámara anterior
+            nuevo_cap.release()
+            self.camera_index = anterior_index
+            self.es_camara_red = isinstance(anterior_index, str)
+            return False
+    
+        # Solo aquí liberamos la anterior, una vez confirmamos que la nueva sirve
+        if anterior_cap is not None:
+            anterior_cap.release()
+    
+        self.cap = nuevo_cap
+        self._prev_gray = None  # resetear detección de movimiento (resolución/fuente distinta)
+        self._ultimo_intento_reconexion = 0.0
+        return True
 

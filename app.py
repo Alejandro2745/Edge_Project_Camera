@@ -131,6 +131,26 @@ def al_cambiar_timeout(data):
     segundos = int(data.get("segundos", TIMEOUT_INICIAL_SEG))
     motor.establecer_timeout(segundos)
 
+@socketio.on("cambiar_camara")
+def al_cambiar_camara(data):
+    """
+    data = {"camara": 0}                         -> cámara local por índice
+    data = {"camara": "http://192.168.1.5:8080/video"}  -> cámara IP/celular
+    """
+    nuevo_valor = data.get("camara")
+    # Si viene como string numérico ("0", "1"), lo convertimos a int
+    if isinstance(nuevo_valor, str) and nuevo_valor.isdigit():
+        nuevo_valor = int(nuevo_valor)
+
+    with _hilo_lock:
+        exito = detector.cambiar_camara(nuevo_valor)
+
+    socketio.emit("resultado_cambio_camara", {
+        "exito": exito,
+        "camara": nuevo_valor,
+        "mensaje": "Cámara cambiada correctamente" if exito
+                   else "No se pudo abrir esa cámara; se mantiene la anterior"
+    })
 
 @socketio.on("control_manual")
 def al_control_manual(data):
