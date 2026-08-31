@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edge Computing · Consumo Inteligente de Iluminación</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  :root{
+    --bg: #0b1220;
+    --panel: #111a2c;
+    --panel-line: #1e2c47;
+    --trace: #35d0a1;
+    --trace-dim: #1d6b57;
+    --warn: #ffb454;
+    --off: #445068;
+    --text: #e7ecf6;
+    --text-dim: #8b97b3;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans);
+    background-image:
+      linear-gradient(var(--panel-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position:-1px -1px;
+  }
+  header{
+    padding:28px 32px 16px;
+  }
+  header .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.14em;
+    color:var(--trace); text-transform:uppercase;
+  }
+  header h1{
+    margin:6px 0 4px; font-size:26px; font-weight:650; letter-spacing:-.01em;
+  }
+  header p{margin:0; color:var(--text-dim); font-size:14px; max-width:640px;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.1fr 1fr 0.8fr;
+    gap:18px;
+    padding:8px 32px 32px;
+  }
+  @media (max-width: 980px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--panel-line);
+    border-radius:10px; padding:16px; display:flex; flex-direction:column;
+  }
+  .panel h2{
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--text-dim); margin:0 0 12px; font-family:var(--mono);
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel h2 .dot{width:6px; height:6px; border-radius:50%; background:var(--trace);}
+
+  /* --- Panel camara --- */
+  #video-wrap{
+    position:relative; border-radius:8px; overflow:hidden;
+    background:#000; aspect-ratio:4/3; display:flex; align-items:center; justify-content:center;
+  }
+  #video-wrap img{width:100%; height:100%; object-fit:cover; display:block;}
+  #video-wrap .placeholder{color:var(--text-dim); font-family:var(--mono); font-size:12px;}
+  .badge-row{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .badge{
+    font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:20px;
+    border:1px solid var(--panel-line); color:var(--text-dim);
+  }
+  .badge.activo{color:var(--trace); border-color:var(--trace-dim); background:rgba(53,208,161,.08);}
+
+  /* --- Panel Arduino/protoboard --- */
+  #circuit-svg{width:100%; height:auto;}
+  .led-glow{transition: filter .25s ease, opacity .25s ease;}
+
+  /* --- Panel bombillo --- */
+  #bulb-stage{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    min-height:180px;
+  }
+  #bulb-svg{width:150px; height:auto; transition: filter .3s ease;}
+  .estado-texto{
+    text-align:center; font-family:var(--mono); font-size:13px; margin-top:10px;
+  }
+  .estado-texto b{color:var(--trace);}
+
+  /* --- Panel de control (fila inferior) --- */
+  .control-row{
+    grid-column: 1 / -1;
+    display:grid; grid-template-columns: 1fr 1fr 1.4fr; gap:18px;
+  }
+  @media (max-width: 980px){ .control-row{grid-template-columns:1fr;} }
+
+  .btn{
+    font-family:var(--mono); font-size:12px; padding:9px 14px; border-radius:6px;
+    border:1px solid var(--panel-line); background:#0e1729; color:var(--text);
+    cursor:pointer; transition:.15s;
+  }
+  .btn:hover{border-color:var(--trace);}
+  .btn.on{background:var(--trace); color:#04140f; border-color:var(--trace); font-weight:700;}
+  .btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+
+  label.field{display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:14px 0 6px;}
+  input[type=range]{width:100%; accent-color:var(--trace);}
+
+  #log{
+    font-family:var(--mono); font-size:11.5px; color:var(--text-dim);
+    max-height:170px; overflow-y:auto; line-height:1.6;
+  }
+  #log .etapa{color:var(--trace);}
+  #log div{border-bottom:1px dashed var(--panel-line); padding:4px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Proyecto IoT · Edge Computing</div>
+  <h1>Consumir energía cuando realmente se necesita</h1>
+  <p>Panel en vivo del flujo Captura → Transmisión → Procesamiento → Decisión → Actuación, integrando cámara, circuito y bombillo en un solo lugar.</p>
+</header>
+
+<div class="grid">
+
+  <!-- PANEL 1: CAMARA -->
+  <div class="panel">
+    <h2><span class="dot"></span>Etapa 1–2 · Cámara (Captura)</h2>
+    <div id="video-wrap">
+      <img id="video-feed" style="display:none;">
+      <span class="placeholder" id="video-placeholder">Esperando señal de la cámara…</span>
+    </div>
+    <div class="badge-row">
+      <span class="badge" id="badge-persona">Persona: —</span>
+      <span class="badge" id="badge-movimiento">Movimiento: —</span>
+      <span class="badge" id="badge-hora">Hora: —</span>
+    </div>
+  </div>
+
+  <!-- PANEL 2: ARDUINO + PROTOBOARD -->
+  <div class="panel">
+    <h2><span class="dot"></span>Arduino + Protoboard</h2>
+    <svg id="circuit-svg" viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg">
+      <!-- protoboard -->
+      <rect x="10" y="10" width="280" height="90" rx="6" fill="#e9e2c9" stroke="#c9bf9c"/>
+      <g stroke="#c9bf9c" stroke-width="1">
+        <line x1="10" y1="30" x2="290" y2="30"/>
+        <line x1="10" y1="80" x2="290" y2="80"/>
+      </g>
+      <!-- holes -->
+      <g fill="#b9ae86">
+        <!-- generated grid of holes -->
+      </g>
+      <!-- arduino board -->
+      <rect x="30" y="120" width="240" height="90" rx="8" fill="#0f5c40" stroke="#0a3f2c"/>
+      <text x="150" y="145" text-anchor="middle" font-family="monospace" font-size="10" fill="#bdf5e0">ARDUINO UNO</text>
+      <rect x="45" y="155" width="34" height="22" rx="2" fill="#1a1a1a"/>
+      <text x="62" y="169" text-anchor="middle" font-family="monospace" font-size="7" fill="#888">USB</text>
+      <g fill="#c8b13a">
+        <circle cx="230" cy="160" r="4"/>
+        <circle cx="245" cy="160" r="4"/>
+        <circle cx="230" cy="175" r="4"/>
+        <circle cx="245" cy="175" r="4"/>
+      </g>
+      <!-- resistor -->
+      <rect x="120" y="60" width="30" height="8" fill="#d8c48a" stroke="#8a7a4a"/>
+      <!-- LED on breadboard, glows with state -->
+      <circle id="led-indicator" class="led-glow" cx="150" cy="45" r="12" fill="#3a1414" stroke="#7a2b2b" stroke-width="2"/>
+      <!-- wires -->
+      <path d="M150,88 L150,120" stroke="#c0392b" stroke-width="2" fill="none"/>
+      <path d="M120,64 L60,64 L60,120" stroke="#2c3e50" stroke-width="2" fill="none"/>
+    </svg>
+    <div class="badge-row">
+      <span class="badge" id="badge-hardware">Hardware: modo simulado</span>
+    </div>
+  </div>
+
+  <!-- PANEL 3: BOMBILLO SIMULADO -->
+  <div class="panel">
+    <h2><span class="dot"></span>Simulación del bombillo</h2>
+    <div id="bulb-stage">
+      <svg id="bulb-svg" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+            <stop offset="0%" stop-color="#fff6c9"/>
+            <stop offset="60%" stop-color="#ffd75e"/>
+            <stop offset="100%" stop-color="#8a6d1a" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle id="bulb-glow-circle" cx="50" cy="50" r="45" fill="url(#glow)" opacity="0"/>
+        <circle id="bulb-body" cx="50" cy="50" r="32" fill="#2a2f3c" stroke="#4a5268" stroke-width="2"/>
+        <rect x="40" y="80" width="20" height="24" rx="3" fill="#6b7280"/>
+        <line x1="40" y1="88" x2="60" y2="88" stroke="#2a2f3c" stroke-width="1.5"/>
+        <line x1="40" y1="95" x2="60" y2="95" stroke="#2a2f3c" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div class="estado-texto">Estado: <b id="texto-estado">apagado</b></div>
+  </div>
+
+  <!-- FILA DE CONTROL -->
+  <div class="control-row">
+
+    <div class="panel">
+      <h2><span class="dot"></span>Modo</h2>
+      <div class="btn-row">
+        <button class="btn on" id="btn-auto">Automático</button>
+        <button class="btn" id="btn-on">Forzar ON</button>
+        <button class="btn" id="btn-off">Forzar OFF</button>
+      </div>
+      <label class="field" for="rango-timeout">Tiempo sin detección antes de apagar: <span id="valor-timeout">15</span>s</label>
+      <input type="range" id="rango-timeout" min="3" max="120" value="15">
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>Etapa 3–4 · Procesamiento / Decisión</h2>
+      <div class="estado-texto" style="text-align:left;">
+        Personas/movimiento activo: <b id="d-actividad">—</b><br>
+        Segundos sin detección: <b id="d-segundos">—</b><br>
+        Motivo última decisión: <b id="d-motivo">—</b>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="dot"></span>Registro del flujo</h2>
+      <div id="log"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const socket = io();
+
+  const videoFeed = document.getElementById('video-feed');
+  const videoPlaceholder = document.getElementById('video-placeholder');
+  const ledIndicator = document.getElementById('led-indicator');
+  const bulbGlow = document.getElementById('bulb-glow-circle');
+  const bulbBody = document.getElementById('bulb-body');
+  const textoEstado = document.getElementById('texto-estado');
+  const log = document.getElementById('log');
+
+  socket.on('video_frame', (data) => {
+    videoFeed.src = 'data:image/jpeg;base64,' + data.imagen;
+    videoFeed.style.display = 'block';
+    videoPlaceholder.style.display = 'none';
+  });
+
+  function badgeSet(id, texto, activo){
+    const el = document.getElementById(id);
+    el.textContent = texto;
+    el.classList.toggle('activo', !!activo);
+  }
+
+  function agregarLog(texto){
+    const linea = document.createElement('div');
+    const hora = new Date().toLocaleTimeString();
+    linea.innerHTML = `<span class="etapa">[${hora}]</span> ${texto}`;
+    log.prepend(linea);
+    while (log.children.length > 40) log.removeChild(log.lastChild);
+  }
+
+  let ultimoEstadoLuz = null;
+
+  socket.on('estado_sistema', (s) => {
+    if (!s || Object.keys(s).length === 0) return;
+
+    badgeSet('badge-persona', 'Persona: ' + (s.persona ? 'sí' : 'no'), s.persona);
+    badgeSet('badge-movimiento', 'Movimiento: ' + (s.movimiento ? 'sí' : 'no'), s.movimiento);
+    badgeSet('badge-hora', 'Hora: ' + (s.hora || '—'), false);
+    badgeSet('badge-hardware', s.hardware_conectado ? 'Hardware: Arduino conectado' : 'Hardware: modo simulado', s.hardware_conectado);
+
+    document.getElementById('d-actividad').textContent = s.hay_actividad ? 'sí' : 'no';
+    document.getElementById('d-segundos').textContent = (s.segundos_sin_deteccion ?? '—');
+    document.getElementById('d-motivo').textContent = s.motivo || '—';
+
+    const on = !!s.iluminacion_on;
+    ledIndicator.style.fill = on ? '#ffd75e' : '#3a1414';
+    ledIndicator.style.filter = on ? 'drop-shadow(0 0 6px #ffd75e)' : 'none';
+    bulbGlow.setAttribute('opacity', on ? '1' : '0');
+    bulbBody.style.fill = on ? '#4a4020' : '#2a2f3c';
+    textoEstado.textContent = on ? 'encendido' : 'apagado';
+
+    if (ultimoEstadoLuz !== on) {
+      agregarLog(`Actuación → iluminación ${on ? 'ENCENDIDA' : 'APAGADA'} (${s.motivo || ''})`);
+      ultimoEstadoLuz = on;
+    }
+  });
+
+  socket.on('error_sistema', (e) => {
+    videoPlaceholder.textContent = e.mensaje || 'Error en el sistema';
+  });
+
+  // --- Controles ---
+  document.getElementById('btn-auto').addEventListener('click', () => {
+    socket.emit('control_manual', {modo: 'automatico'});
+    setActivo('btn-auto');
+    agregarLog('Modo cambiado a AUTOMÁTICO');
+  });
+  document.getElementById('btn-on').addEventListener('click', () => {
+    socket.emit('control_manual', {modo: 'manual', encender: true});
+    setActivo('btn-on');
+    agregarLog('Control manual: forzar ENCENDIDO');
+  });
+  document.getElementById('btn-off').addEventListener('click', () => {
+    socket.emit('control_manual', {modo: 'manual', encender: false});
+    setActivo('btn-off');
+    agregarLog('Control manual: forzar APAGADO');
+  });
+  function setActivo(id){
+    ['btn-auto','btn-on','btn-off'].forEach(b => document.getElementById(b).classList.remove('on'));
+    document.getElementById(id).classList.add('on');
+  }
+
+  const rango = document.getElementById('rango-timeout');
+  const valorTimeout = document.getElementById('valor-timeout');
+  rango.addEventListener('input', () => {
+    valorTimeout.textContent = rango.value;
+  });
+  rango.addEventListener('change', () => {
+    socket.emit('cambiar_timeout', {segundos: parseInt(rango.value, 10)});
+    agregarLog(`Tiempo de espera ajustado a ${rango.value}s`);
+  });
+
+  agregarLog('Dashboard iniciado, esperando datos del nodo edge…');
+</script>
+
+</body>
+</html>
