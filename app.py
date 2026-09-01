@@ -152,6 +152,54 @@ def al_cambiar_camara(data):
                    else "No se pudo abrir esa cámara; se mantiene la anterior"
     })
 
+@socketio.on("listar_puertos_arduino")
+def al_listar_puertos_arduino():
+    """Refresca en vivo la lista de puertos seriales (p.ej. al enchufar el Arduino)."""
+    socketio.emit("puertos_arduino", {"puertos": Actuador.listar_puertos()})
+
+
+@socketio.on("conectar_arduino")
+def al_conectar_arduino(data):
+    """
+    data = {"puerto": "/dev/ttyUSB0"}  (o "COM3" en Windows)
+    Conecta el Arduino EN VIVO, sin reiniciar app.py. En cuanto conecta,
+    el LED de la protoboard se sincroniza al instante con el estado
+    lógico actual (no espera al siguiente ciclo de detección).
+    """
+    global _ultimo_contexto
+    puerto = data.get("puerto")
+    if not puerto:
+        socketio.emit("resultado_conexion_arduino", {
+            "exito": False, "mensaje": "Selecciona un puerto antes de conectar"
+        })
+        return
+
+    resultado = actuador.conectar(puerto)
+    socketio.emit("resultado_conexion_arduino", resultado)
+
+    with _hilo_lock:
+        _ultimo_contexto["hardware_conectado"] = actuador.conectado_hardware
+        _ultimo_contexto["puerto_conectado"] = actuador.puerto if actuador.conectado_hardware else None
+        _ultimo_contexto["iluminacion_on"] = actuador.estado_actual
+
+    socketio.emit("estado_sistema", _ultimo_contexto)
+
+
+@socketio.on("desconectar_arduino")
+def al_desconectar_arduino():
+    """Desconecta el Arduino en vivo; el flujo de detección/decisión sigue
+    corriendo normalmente y el sistema vuelve a modo simulado."""
+    global _ultimo_contexto
+    resultado = actuador.desconectar()
+    socketio.emit("resultado_conexion_arduino", resultado)
+
+    with _hilo_lock:
+        _ultimo_contexto["hardware_conectado"] = False
+        _ultimo_contexto["puerto_conectado"] = None
+
+    socketio.emit("estado_sistema", _ultimo_contexto)
+
+
 @socketio.on("control_manual")
 def al_control_manual(data):
     """

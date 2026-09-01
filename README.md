@@ -89,13 +89,31 @@ El programa **no requiere hardware físico** para funcionar: si no defines
 `PUERTO_ARDUINO` en `app.py`, el sistema queda en modo 100% simulado y el panel
 "Arduino + Protoboard" y el bombillo reaccionan igual, solo que en software.
 
-Si sí tienes un Arduino Uno/Nano/ESP32 con un relé o LED en una protoboard:
+Si sí tienes un Arduino Uno/Nano/ESP32 con un LED (o relé) en una protoboard:
 
-1. Carga `arduino/rele_control/rele_control.ino` con el IDE de Arduino.
-2. Conecta el pin 8 al relé (o a un LED con resistencia de 220Ω si quieres simular
-   directamente el bombillo).
-3. En `app.py`, define `PUERTO_ARDUINO = "/dev/ttyUSB0"` (Linux/Mac) o `"COM3"`
-   (Windows). Puedes listar los puertos disponibles con `Actuador.listar_puertos()`.
+1. Arma el circuito en la protoboard:
+   - **Pin 8** del Arduino → resistencia de 220Ω → ánodo (pata larga) del LED.
+   - Cátodo (pata corta) del LED → **GND** del Arduino.
+   - (Si usas un módulo relé en vez de LED directo: pin 8 → IN del relé,
+     VCC del relé → 5V, GND del relé → GND).
+2. Carga `arduino/rele_control/rele_control.ino` con el IDE de Arduino (o Wokwi).
+   Al arrancar, el LED parpadea 3 veces — así confirmas que el cableado está
+   bien **antes** de conectar Python.
+3. Conecta el Arduino por USB al computador y abre el dashboard (`python app.py`).
+4. **Ya no hace falta editar código ni reiniciar nada:** en el panel
+   "Arduino + Protoboard" del dashboard hay un selector de puerto serial
+   con un botón ⟳ para refrescar la lista, y botones **Conectar** /
+   **Desconectar**. Elige tu puerto (p. ej. `/dev/ttyUSB0` en Linux/Mac o
+   `COM3` en Windows) y pulsa **Conectar**: el LED físico se sincroniza al
+   instante con el estado actual del sistema, y a partir de ahí reacciona
+   en vivo a cada detección, igual que el LED simulado del panel SVG.
+   Puedes desconectar el Arduino en cualquier momento (por ejemplo para
+   moverlo a otro puerto) sin que el resto del sistema (cámara, MQTT,
+   lógica de decisión) se detenga.
+5. Si prefieres fijar el puerto de una vez al arrancar el proceso (en vez
+   de conectarlo desde el dashboard), puedes seguir definiendo
+   `PUERTO_ARDUINO = "/dev/ttyUSB0"` en `app.py`; los puertos disponibles
+   también se pueden listar por código con `Actuador.listar_puertos()`.
 
 ## 5. ¿Y si no tienes ningún componente físico? — simuladores externos
 
