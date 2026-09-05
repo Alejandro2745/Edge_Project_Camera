@@ -185,6 +185,25 @@
     <div class="badge-row">
       <span class="badge" id="badge-hardware">Hardware: modo simulado</span>
     </div>
+
+    <!-- NUEVO: conexión en vivo con el Arduino real (protoboard + LED) -->
+    <label class="field" for="select-puerto">Puerto serial del Arduino</label>
+    <div class="btn-row">
+      <select id="select-puerto"
+              style="flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px;
+                     border-radius:6px; border:1px solid var(--panel-line);
+                     background:#0e1729; color:var(--text);">
+        <option value="">— sin puertos detectados —</option>
+        {% for p in puertos_disponibles %}
+        <option value="{{ p }}">{{ p }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" id="btn-refrescar-puertos" title="Buscar puertos de nuevo">⟳</button>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn" id="btn-conectar-arduino">Conectar</button>
+      <button class="btn" id="btn-desconectar-arduino">Desconectar</button>
+    </div>
   </div>
 
   <!-- PANEL 3: BOMBILLO SIMULADO -->
@@ -280,7 +299,13 @@
     badgeSet('badge-persona', 'Persona: ' + (s.persona ? 'sí' : 'no'), s.persona);
     badgeSet('badge-movimiento', 'Movimiento: ' + (s.movimiento ? 'sí' : 'no'), s.movimiento);
     badgeSet('badge-hora', 'Hora: ' + (s.hora || '—'), false);
-    badgeSet('badge-hardware', s.hardware_conectado ? 'Hardware: Arduino conectado' : 'Hardware: modo simulado', s.hardware_conectado);
+    badgeSet(
+      'badge-hardware',
+      s.hardware_conectado
+        ? `Hardware: Arduino conectado (${s.puerto_conectado || ''})`
+        : 'Hardware: modo simulado',
+      s.hardware_conectado
+    );
 
     document.getElementById('d-actividad').textContent = s.hay_actividad ? 'sí' : 'no';
     document.getElementById('d-segundos').textContent = (s.segundos_sin_deteccion ?? '—');
@@ -335,6 +360,55 @@
       videoPlaceholder.style.display = 'none';
     }
   });
+
+  // --- Conexión en vivo con el Arduino real (protoboard + LED) ---
+  const selectPuerto = document.getElementById('select-puerto');
+
+  function refrescarPuertos(silencioso){
+    socket.emit('listar_puertos_arduino');
+    if (!silencioso) agregarLog('Buscando puertos seriales disponibles…');
+  }
+
+  document.getElementById('btn-refrescar-puertos').addEventListener('click', () => refrescarPuertos(false));
+
+  socket.on('puertos_arduino', (data) => {
+    const actual = selectPuerto.value;
+    const puertos = data.puertos || [];
+    selectPuerto.innerHTML = '';
+    if (puertos.length === 0) {
+      selectPuerto.innerHTML = '<option value="">— sin puertos detectados —</option>';
+    } else {
+      puertos.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        selectPuerto.appendChild(opt);
+      });
+      if (puertos.includes(actual)) selectPuerto.value = actual;
+    }
+  });
+
+  document.getElementById('btn-conectar-arduino').addEventListener('click', () => {
+    const puerto = selectPuerto.value;
+    if (!puerto) {
+      agregarLog('⚠️ Selecciona un puerto antes de conectar el Arduino');
+      return;
+    }
+    agregarLog(`Conectando con Arduino en ${puerto}…`);
+    socket.emit('conectar_arduino', { puerto });
+  });
+
+  document.getElementById('btn-desconectar-arduino').addEventListener('click', () => {
+    socket.emit('desconectar_arduino');
+  });
+
+  socket.on('resultado_conexion_arduino', (data) => {
+    agregarLog((data.exito ? '✅ ' : '⚠️ ') + data.mensaje);
+  });
+
+  // Buscar puertos automáticamente al cargar el dashboard, por si el
+  // Arduino ya estaba conectado antes de abrir la página.
+  refrescarPuertos(true);
 
   function setActivo(id){
     ['btn-auto','btn-on','btn-off'].forEach(b => document.getElementById(b).classList.remove('on'));
