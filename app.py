@@ -35,7 +35,7 @@ from actuador import Actuador
 # Configuracion
 # ---------------------------------------------------------------------
 USAR_MQTT = True           # False para correr todo en un solo proceso sin red
-PUERTO_ARDUINO = None      # p.ej. "/dev/ttyUSB0" o "COM3"; None = modo simulado
+PUERTO_ARDUINO = "COM4"      # p.ej. "/dev/ttyUSB0" o "COM3"; None = modo simulado
 TIMEOUT_INICIAL_SEG = 15   # tiempo de espera antes de apagar (ajustable en vivo)
 
 # CAMARA_INDEX define la fuente de video:
