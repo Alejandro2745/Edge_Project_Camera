@@ -11,6 +11,8 @@ Protocolo serial (ver arduino/rele_control/rele_control.ino):
   Arduino -> Python:  "ACK:ON\\n" / "ACK:OFF\\n"
 """
 
+import time
+
 try:
     import serial
     import serial.tools.list_ports
@@ -39,6 +41,10 @@ class Actuador:
     def _conectar(self, puerto):
         try:
             self._ser = serial.Serial(puerto, self.baudrate, timeout=1)
+            # Al abrir el puerto, el Arduino se resetea (via DTR) y tarda
+            # un par de segundos en volver a ejecutar setup(); sin esta
+            # espera, el primer comando ON/OFF que se envíe se pierde.
+            time.sleep(2)
             self.conectado_hardware = True
         except Exception:
             self._ser = None
