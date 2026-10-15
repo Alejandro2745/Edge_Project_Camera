@@ -179,6 +179,13 @@ def al_control_manual(data):
         motor.volver_a_automatico()
         with _hilo_lock:
             _ultimo_contexto["modo_manual"] = False
+            _ultimo_contexto["motivo"] = "Modo automático restablecido desde el dashboard"
+
+    # Publicar también los cambios manuales, igual que los automáticos,
+    # para que la capa Fog (que solo escucha MQTT) los registre.
+    if USAR_MQTT and mqtt_client is not None:
+        mqtt_client.publicar_actuacion(_ultimo_contexto.get("iluminacion_on", False),
+                                        _ultimo_contexto.get("motivo", ""))
 
     socketio.emit("estado_sistema", _ultimo_contexto)
 

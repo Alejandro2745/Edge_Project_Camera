@@ -7,7 +7,10 @@ rem Mosquitto no hace falta arrancarlo: ya corre como servicio de Windows.
 
 cd /d "%~dp0"
 
-start "Edge - Dashboard" cmd /k "set BROKER_HOST=localhost && python run.py"
+rem OJO: sin espacio antes de "&&" -- "set VAR=valor " con espacio deja
+rem la variable con un espacio al final (BROKER_HOST="localhost ") y la
+rem conexion MQTT falla en silencio.
+start "Edge - Dashboard" cmd /k "set BROKER_HOST=localhost&&python run.py"
 timeout /t 3 >nul
 
 start "Fog - En vivo" cmd /k "cd /d "%~dp0fog" && python fog_node.py"
