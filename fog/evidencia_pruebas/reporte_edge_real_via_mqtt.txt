@@ -1,0 +1,13 @@
+
+REPORTE FOG - HOY  (2026-10-14 a 2026-10-14)
+Parametros: bombillo 9.0 W | espera del sistema 1.8 W | tope de luz innecesaria evitada 4.0 h/dia
+
+Dia         Luz ON(h) Luz OFF(h) Monit.(h) Real(kWh) Evitado(kWh) Espera(kWh) Neto(kWh) Activ.
+----------------------------------------------------------------------------------------------
+2026-10-14       0.01       0.01      0.02     0.000        0.000       0.000     0.000      3
+----------------------------------------------------------------------------------------------
+TOTAL            0.01       0.01      0.02     0.000        0.000       0.000     0.000      3
+
+Proyeccion mensual: ahorro bruto del bombillo 0.002 kWh/mes | ahorro neto (descontando la espera del sistema) 0.001 kWh/mes
+Datos: 1104 mensajes MQTT recibidos -> 9 filas almacenadas
+

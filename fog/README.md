@@ -1,41 +1,96 @@
-# Capa Fog (pendiente)
+# Capa Fog
 
-Carpeta reservada para la capa de **Fog Computing** que se añadirá más
-adelante al proyecto (según lo indicado por el profesor).
+Nodo Fog que se **suma** al Edge (`edge/`) sin modificar su lógica de decisión
+en tiempo real. Se suscribe a los mismos tópicos MQTT que ya publica el Edge
+(`iot_edge/deteccion` e `iot_edge/actuacion`), agrega los datos por minuto,
+los guarda en SQLite y calcula consumo/ahorro energético en un dashboard web
+propio (puerto 5001) y por línea de comandos.
 
-## Idea general
+Es solo **observador**: nunca publica comandos. Si este nodo se apaga o
+falla, el Edge sigue encendiendo/apagando la luz con normalidad.
 
-Hoy el proyecto tiene una sola capa, **Edge** (`edge/`): la cámara
-detecta, decide y actúa localmente, todo en el mismo nodo.
+## Instalar
 
-Una arquitectura Edge → Fog típica agrega un nivel intermedio entre el
-nodo edge y la nube:
+Ya cubierto por el `requirements.txt` de la raíz del proyecto (el Fog
+reutiliza `flask` y `paho-mqtt`, que ya instalaste para el Edge):
 
-```
-Edge (edge/)            Fog (fog/)                 Cloud (futuro)
-──────────────          ──────────────────         ──────────────
-Cámara + sensor    →    Agregación de varios   →   Almacenamiento
-Detección rápida        nodos edge                 histórico,
-Decisión local           Reglas más complejas       dashboards,
-                         Filtrado/resumen de         analítica
-                         datos antes de subir
-                         Cache / buffering si
-                         se cae la conexión
+```bash
+pip install -r requirements.txt
 ```
 
-## Qué podría vivir aquí
+## Conectarlo al Edge (elige una opción)
 
-- Un servidor intermedio (p. ej. Flask/FastAPI o un broker MQTT propio)
-  que reciba los eventos de **uno o varios** nodos edge.
-- Lógica de agregación (ej. "si 2 de 3 cámaras detectan actividad,
-  confirma la alerta") en vez de depender de un único sensor.
-- Un buffer/cache local que siga funcionando si se pierde la conexión
-  a internet, y sincronice luego con la nube.
-- Reglas de negocio más pesadas que no conviene correr en el nodo edge
-  (poca batería/CPU), p. ej. analítica histórica de consumo.
+**A) Sin tocar nada.** El `edge/transmision_mqtt.py` actual publica en el
+broker público `test.mosquitto.org` por defecto, así que el Fog se conecta
+ahí:
+```bash
+python fog/fog_node.py --broker test.mosquitto.org
+```
+Limitación: es un broker compartido y sin autenticación (cualquiera puede
+leer o publicar en esos tópicos), y depende de que tengas internet estable
+durante la sustentación.
 
-## Convención de carpeta
+**B) Broker local (recomendado para la sustentación).**
+1. Instala Mosquitto (https://mosquitto.org/download/) y ejecútalo desde la
+   raíz del repo:
+   `"C:\Program Files\mosquitto\mosquitto.exe" -c fog\mosquitto.conf -v`
+2. Antes de arrancar el Edge, define la variable de entorno `BROKER_HOST`
+   para que apunte al broker local (no hace falta editar código —
+   `edge/app.py` ya la lee):
+   ```bash
+   set BROKER_HOST=localhost
+   python run.py
+   ```
+3. En otra terminal: `python fog/fog_node.py` → dashboard en
+   `http://localhost:5001`
 
-Misma convención que `edge/`: un paquete Python (`__init__.py`),
-módulos por responsabilidad, y si expone su propio dashboard/API, sus
-plantillas en `fog/templates/`.
+Si Mosquitto y el Fog corren en otro equipo (p. ej. una Raspberry Pi), usa su
+IP en vez de `localhost` tanto en `BROKER_HOST` como en
+`python fog/fog_node.py --broker <IP>`.
+
+## Comandos
+
+- `python fog/fog_node.py --reporte dia|semana|mes` — imprime el reporte y termina.
+- `python fog/fog_node.py --demo` — dashboard con 7 días **simulados** (banner visible; no son mediciones).
+- `python -m unittest test_fog_node -v` (ejecutado desde dentro de `fog/`) — pruebas unitarias, no necesitan broker.
+- `python -m fog.simulacion_edge [duracion_seg] [timeout_seg]` (ejecutado desde la raíz del repo) — corre el Edge real con una cámara simulada, útil para probar la integración Edge → MQTT → Fog sin webcam ni personas.
+
+## Modelo de energía (variables de entorno)
+
+- `P_BOMBILLO_W=9.0` — el bombillo LED real que este sistema está diseñado
+  para controlar en producción. **Importante:** como la integración con un
+  bombillo inteligente/Alexa no se logró, lo que se demuestra en vivo es un
+  LED/relé sobre protoboard; sean explícitos en la sustentación de que el
+  circuito es un proxy y que el modelo de ahorro calcula lo que se ahorraría
+  con el bombillo real.
+- `P_ESPERA_W=0.4` — consumo propio **del circuito de actuación** (Arduino +
+  módulo de relé) en reposo, no de la PC que corre la cámara/Flask durante el
+  desarrollo. Si mides el consumo real de tu circuito y es distinto, ajusta
+  este valor.
+- `OLVIDO_MAX_H_DIA=4.0` — supuesto del proyecto: sin el sistema, la luz
+  quedaría encendida innecesariamente ~4 h/día.
+- Bombillo evitado (bruto) = 9 W × min(horas apagadas, 4 h/día) ≤ 36 Wh/día ≈ 1.08 kWh/mes.
+- Ahorro neto = bruto − consumo propio del sistema (espera × tiempo monitoreado).
+- Con los valores actuales el neto es positivo: 0.4 W las 24 h son solo
+  9.6 Wh/día, muy por debajo del máximo evitado de 36 Wh/día.
+
+## Qué se probó y qué no
+
+- Compila y los 7 tests unitarios pasan en Windows (verificado en este equipo).
+- `--demo --reporte semana` genera un reporte real con datos simulados (verificado en este equipo).
+- **Pendiente:** prueba end-to-end con Mosquitto local + Edge real (cámara + Arduino en `COM4`).
+- Los archivos en [`evidencia_pruebas/`](evidencia_pruebas/) son de una prueba
+  anterior en Linux con datos **simulados**; no son mediciones de este equipo.
+
+## Estructura de la carpeta
+
+```
+fog/
+├── __init__.py
+├── README.md              # este archivo
+├── fog_node.py             # Implementación: MQTT + SQLite + dashboard + reportes
+├── test_fog_node.py        # Pruebas unitarias (no requieren broker)
+├── simulacion_edge.py      # Corre el Edge real con cámara simulada (sin webcam)
+├── mosquitto.conf          # Config mínima para un broker Mosquitto local
+└── evidencia_pruebas/      # Capturas y reportes de una prueba previa (datos simulados)
+```

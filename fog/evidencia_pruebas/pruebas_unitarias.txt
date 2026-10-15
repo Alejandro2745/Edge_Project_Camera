@@ -1,0 +1,12 @@
+test_acumula_segundos_on_off (test_fog_node.TestFog.test_acumula_segundos_on_off) ... ok
+test_agrega_detecciones_por_minuto (test_fog_node.TestFog.test_agrega_detecciones_por_minuto) ... ok
+test_demo_y_reporte (test_fog_node.TestFog.test_demo_y_reporte) ... ok
+test_energia (test_fog_node.TestFog.test_energia) ... ok
+test_hueco_del_edge_no_cuenta_como_monitoreado (test_fog_node.TestFog.test_hueco_del_edge_no_cuenta_como_monitoreado) ... ok
+test_reporte_periodo (test_fog_node.TestFog.test_reporte_periodo) ... ok
+test_solo_registra_cambios_de_estado (test_fog_node.TestFog.test_solo_registra_cambios_de_estado) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.073s
+
+OK

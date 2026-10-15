@@ -36,9 +36,11 @@ más el panel de control (modo automático/manual, ajuste del tiempo de espera, 
 registro cronológico de las 5 etapas).
 
 Por defecto el sistema publica y consume MQTT contra el broker público de pruebas
-`test.mosquitto.org`, así que funciona sin instalar un broker propio. Para producción,
-cambia `broker_host` en `edge/transmision_mqtt.py` por tu propio Mosquitto/HiveMQ, o pon
-`USAR_MQTT = False` en `edge/app.py` para que todo corra en un solo proceso sin red.
+`test.mosquitto.org`, así que funciona sin instalar un broker propio. Para apuntar a
+tu propio Mosquitto/HiveMQ (recomendado para probar la capa [Fog](fog/README.md)), define
+las variables de entorno `BROKER_HOST`/`BROKER_PORT` antes de ejecutar `python run.py`
+(no hace falta editar código), o pon `USAR_MQTT = False` en `edge/app.py` para que todo
+corra en un solo proceso sin red.
 
 ## 3. Usar la cámara del celular (en vez de la webcam del computador)
 
@@ -144,8 +146,12 @@ Edge_Project_Camera/
 │   ├── logica_decision.py       # Etapas 3-4: procesamiento y reglas
 │   ├── actuador.py              # Etapa 5: actuación (serial o simulada)
 │   └── templates/index.html     # Dashboard integrado
-├── fog/                         # Capa FOG (reservada para lo que pida el profesor)
-│   └── README.md                # Qué podría vivir aquí y cómo encajará con edge/
+├── fog/                         # Capa FOG: agrega datos del Edge, calcula ahorro energético
+│   ├── fog_node.py              # MQTT (observador) + SQLite + dashboard propio (puerto 5001)
+│   ├── test_fog_node.py         # Pruebas unitarias (sin broker)
+│   ├── simulacion_edge.py       # Corre el Edge real con cámara simulada
+│   ├── mosquitto.conf           # Config mínima para un broker MQTT local
+│   └── README.md                # Cómo instalar, conectar y el modelo de energía
 ├── arduino/rele_control/rele_control.ino   # Firmware para Arduino real o Wokwi
 ├── tools/                       # Scripts sueltos / utilidades de desarrollo
 │   ├── cam.py                   # Lista los índices de cámara disponibles

@@ -19,6 +19,7 @@ Ejecutar:
 """
 
 import base64
+import os
 import threading
 import time
 
@@ -37,6 +38,12 @@ from edge.actuador import Actuador
 USAR_MQTT = True           # False para correr todo en un solo proceso sin red
 PUERTO_ARDUINO = "COM4"      # p.ej. "/dev/ttyUSB0" o "COM3"; None = modo simulado
 TIMEOUT_INICIAL_SEG = 15   # tiempo de espera antes de apagar (ajustable en vivo)
+
+# Broker MQTT: por defecto el público de pruebas. Para apuntar a un Mosquitto
+# local (recomendado para probar la capa Fog, ver fog/README.md), define la
+# variable de entorno BROKER_HOST=localhost antes de ejecutar, sin tocar código.
+BROKER_HOST = os.environ.get("BROKER_HOST", "test.mosquitto.org")
+BROKER_PORT = int(os.environ.get("BROKER_PORT", "1883"))
 
 # CAMARA_INDEX define la fuente de video:
 #   - 0, 1, 2...             -> cámara local (webcam del computador)
@@ -75,7 +82,8 @@ def _al_recibir_deteccion_via_mqtt(payload: dict):
 
 mqtt_client = None
 if USAR_MQTT:
-    mqtt_client = ClienteMQTT(on_deteccion=_al_recibir_deteccion_via_mqtt)
+    mqtt_client = ClienteMQTT(broker_host=BROKER_HOST, broker_port=BROKER_PORT,
+                               on_deteccion=_al_recibir_deteccion_via_mqtt)
     mqtt_client.conectar()
 
 
