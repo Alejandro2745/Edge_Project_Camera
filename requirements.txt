@@ -7,6 +7,9 @@ opencv-python==4.10.0.84
 paho-mqtt==1.6.1
 pyserial==3.5
 numpy
+pygrabber==0.2   # Windows: nombres reales de camaras locales en el dashboard
+                 # (opcional - si falla al instalar/importar en otro SO, el
+                 # dashboard cae solo a "Camara N" genericas, sin romper nada)
 
 # Fog (fog/fog_node.py) - reutiliza flask y paho-mqtt de arriba, sin
 # dependencias adicionales. Si se despliega fog/ solo en otro equipo

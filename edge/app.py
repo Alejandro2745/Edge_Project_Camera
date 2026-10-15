@@ -126,6 +126,8 @@ def index():
         "index.html",
         timeout_inicial=TIMEOUT_INICIAL_SEG,
         puertos_disponibles=Actuador.listar_puertos(),
+        camaras_disponibles=DetectorPresencia.listar_camaras(),
+        camara_actual=CAMARA_INDEX,
     )
 
 

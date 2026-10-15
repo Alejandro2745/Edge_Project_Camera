@@ -42,8 +42,50 @@ class DetectorPresencia:
         self.hog = cv2.HOGDescriptor()
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
+    @staticmethod
+    def _abrir_captura(fuente):
+        """
+        Abre `fuente` con OpenCV. Para un índice local (int) fuerza el
+        backend DirectShow (CAP_DSHOW): es el mismo backend que usa
+        `listar_camaras()` para enumerar los dispositivos, así que el
+        índice que ve el usuario en el dashboard coincide con el que
+        realmente abre OpenCV. Para una URL de red se deja el backend
+        por defecto.
+        """
+        if isinstance(fuente, int):
+            return cv2.VideoCapture(fuente, cv2.CAP_DSHOW)
+        return cv2.VideoCapture(fuente)
+
+    @staticmethod
+    def listar_camaras(max_indices: int = 6):
+        """
+        Lista las cámaras locales disponibles como
+        [{"indice": int, "nombre": str}, ...].
+
+        En Windows usa `pygrabber` (DirectShow) para obtener el nombre
+        real del dispositivo, p.ej. "USB2.0 HD UVC WebCam", en vez de
+        solo un número. Si la librería no está instalada o falla (otro
+        SO, sin dispositivos DirectShow, etc.), cae a un nombre
+        genérico "Cámara N" probando abrir cada índice con OpenCV.
+        """
+        try:
+            from pygrabber.dshow_graph import FilterGraph
+            nombres = FilterGraph().get_input_devices()
+            if nombres:
+                return [{"indice": i, "nombre": n} for i, n in enumerate(nombres)]
+        except Exception:
+            pass
+
+        camaras = []
+        for i in range(max_indices):
+            cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                camaras.append({"indice": i, "nombre": f"Cámara {i}"})
+            cap.release()
+        return camaras
+
     def abrir(self) -> bool:
-        self.cap = cv2.VideoCapture(self.camera_index)
+        self.cap = self._abrir_captura(self.camera_index)
         # Para streams de red (MJPEG del celular), un buffer pequeño evita
         # que el video se vea "atrasado" respecto al momento real.
         if self.es_camara_red:
@@ -137,8 +179,8 @@ class DetectorPresencia:
     
         self.camera_index = nuevo_index
         self.es_camara_red = isinstance(nuevo_index, str)
-    
-        nuevo_cap = cv2.VideoCapture(self.camera_index)
+
+        nuevo_cap = self._abrir_captura(self.camera_index)
         if self.es_camara_red:
             try:
                 nuevo_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)

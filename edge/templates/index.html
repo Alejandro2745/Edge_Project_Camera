@@ -108,6 +108,17 @@
   label.field{display:block; font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:14px 0 6px;}
   input[type=range]{width:100%; accent-color:var(--trace);}
 
+  .btn-camara{font-size:11px; padding:8px 10px;}
+  .detalle-url{margin-top:14px;}
+  .detalle-url summary{
+    cursor:pointer; font-family:var(--mono); font-size:11px; color:var(--text-dim);
+    list-style:none;
+  }
+  .detalle-url summary::-webkit-details-marker{display:none;}
+  .detalle-url summary::before{content:"▸ "; color:var(--text-dim);}
+  .detalle-url[open] summary::before{content:"▾ ";}
+  .detalle-url summary:hover{color:var(--trace);}
+
   #log{
     font-family:var(--mono); font-size:11.5px; color:var(--text-dim);
     max-height:170px; overflow-y:auto; line-height:1.6;
@@ -138,15 +149,28 @@
       <span class="badge" id="badge-movimiento">Movimiento: —</span>
       <span class="badge" id="badge-hora">Hora: —</span>
     </div>
-    <!-- NUEVO: control de cámara -->
-    <label class="field" for="input-camara">Fuente de cámara (índice local o URL IP Webcam)</label>
-    <div class="btn-row">
-      <input type="text" id="input-camara" placeholder="0, 1... o http://192.168.x.x:8080/video"
-            style="flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px;
-                    border-radius:6px; border:1px solid var(--panel-line);
-                    background:#0e1729; color:var(--text);">
-      <button class="btn" id="btn-cambiar-camara">Cambiar</button>
+    <!-- Cámaras locales detectadas -->
+    <label class="field">Cámara local</label>
+    <div class="btn-row" id="camaras-locales">
+      {% for cam in camaras_disponibles %}
+      <button class="btn btn-camara{{ ' on' if cam.indice == camara_actual else '' }}"
+              data-indice="{{ cam.indice }}" title="{{ cam.nombre }} (índice {{ cam.indice }})">{{ cam.nombre }}</button>
+      {% else %}
+      <span class="placeholder" style="font-size:12px;">No se detectaron cámaras locales</span>
+      {% endfor %}
     </div>
+
+    <!-- Cámara por URL (celular / IP Webcam): oculta salvo que se necesite -->
+    <details class="detalle-url">
+      <summary>Usar cámara por URL (celular / IP Webcam)</summary>
+      <div class="btn-row" style="margin-top:8px;">
+        <input type="text" id="input-camara" placeholder="http://192.168.x.x:8080/video"
+              style="flex:1; font-family:var(--mono); font-size:12px; padding:8px 10px;
+                      border-radius:6px; border:1px solid var(--panel-line);
+                      background:#0e1729; color:var(--text);">
+        <button class="btn" id="btn-cambiar-camara">Cambiar</button>
+      </div>
+    </details>
   </div>
 
   <!-- PANEL 2: ARDUINO + PROTOBOARD -->
@@ -326,6 +350,14 @@
     agregarLog(`Solicitando cambio de cámara a "${valor}"…`);
   });
 
+  document.querySelectorAll('.btn-camara').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const indice = parseInt(btn.dataset.indice, 10);
+      socket.emit('cambiar_camara', { camara: indice });
+      agregarLog(`Solicitando cambio a cámara local "${btn.textContent.trim()}"…`);
+    });
+  });
+
   socket.on('resultado_cambio_camara', (data) => {
     agregarLog(
       (data.exito ? '✅ ' : '⚠️ ') + data.mensaje + ` (fuente: ${data.camara})`
@@ -333,6 +365,9 @@
     if (data.exito) {
       // El video puede tardar 1-2 frames en refrescar con la nueva fuente
       videoPlaceholder.style.display = 'none';
+      document.querySelectorAll('.btn-camara').forEach(b => {
+        b.classList.toggle('on', parseInt(b.dataset.indice, 10) === data.camara);
+      });
     }
   });
 
