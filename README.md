@@ -9,22 +9,26 @@ mismo lugar.
 
 ## 1. Arquitectura (mapea 1:1 con las 5 etapas de las diapositivas)
 
+Todo el código de la capa **Edge** vive en el paquete [`edge/`](edge/):
+
 | Etapa | Módulo | Qué hace |
 |---|---|---|
-| 1. Captura | `deteccion.py` | Lee la cámara, detecta persona (HOG+SVM de OpenCV) y movimiento (diferencia de frames) |
-| 2. Transmisión | `transmision_mqtt.py` | Publica `{persona, movimiento, hora}` por MQTT (protocolo real usado en IoT) |
-| 3. Procesamiento | `logica_decision.py` | Interpreta el payload y construye el contexto (¿hay actividad?, ¿cuánto tiempo sin detección?) |
-| 4. Decisión | `logica_decision.py` | Regla: si hay persona → encender; si no hay detección por X segundos → apagar |
-| 5. Actuación | `actuador.py` | Cambia el "interruptor virtual"; si hay un Arduino conectado por USB, le envía `ON`/`OFF` por serial |
-| Orquestación + Dashboard | `app.py`, `templates/index.html` | Une todo con Flask-SocketIO y sirve el panel visual en tiempo real |
+| 1. Captura | [`edge/deteccion.py`](edge/deteccion.py) | Lee la cámara, detecta persona (HOG+SVM de OpenCV) y movimiento (diferencia de frames) |
+| 2. Transmisión | [`edge/transmision_mqtt.py`](edge/transmision_mqtt.py) | Publica `{persona, movimiento, hora}` por MQTT (protocolo real usado en IoT) |
+| 3. Procesamiento | [`edge/logica_decision.py`](edge/logica_decision.py) | Interpreta el payload y construye el contexto (¿hay actividad?, ¿cuánto tiempo sin detección?) |
+| 4. Decisión | [`edge/logica_decision.py`](edge/logica_decision.py) | Regla: si hay persona → encender; si no hay detección por X segundos → apagar |
+| 5. Actuación | [`edge/actuador.py`](edge/actuador.py) | Cambia el "interruptor virtual"; si hay un Arduino conectado por USB, le envía `ON`/`OFF` por serial |
+| Orquestación + Dashboard | [`edge/app.py`](edge/app.py), [`edge/templates/index.html`](edge/templates/index.html) | Une todo con Flask-SocketIO y sirve el panel visual en tiempo real |
+
+La carpeta [`fog/`](fog/) está reservada para la próxima capa de **Fog
+Computing** que se agregará al proyecto (ver [`fog/README.md`](fog/README.md)).
 
 ## 2. Instalación y ejecución
 
 ```bash
-cd iot_project
 python -m venv venv && source venv/bin/activate   # opcional pero recomendado
 pip install -r requirements.txt
-python app.py
+python run.py
 ```
 
 Abre `http://localhost:5000`. Verás tres paneles en vivo (cámara, circuito, bombillo)
@@ -33,8 +37,8 @@ registro cronológico de las 5 etapas).
 
 Por defecto el sistema publica y consume MQTT contra el broker público de pruebas
 `test.mosquitto.org`, así que funciona sin instalar un broker propio. Para producción,
-cambia `broker_host` en `transmision_mqtt.py` por tu propio Mosquitto/HiveMQ, o pon
-`USAR_MQTT = False` en `app.py` para que todo corra en un solo proceso sin red.
+cambia `broker_host` en `edge/transmision_mqtt.py` por tu propio Mosquitto/HiveMQ, o pon
+`USAR_MQTT = False` en `edge/app.py` para que todo corra en un solo proceso sin red.
 
 ## 3. Usar la cámara del celular (en vez de la webcam del computador)
 
@@ -50,7 +54,7 @@ a esa dirección.
    (esto es obligatorio: deben estar en la misma red local).
 3. Abre la app, baja hasta el final y toca **"Start server"**.
 4. La app mostrará una dirección como `http://192.168.1.15:8080`. Anótala.
-5. En `app.py`, cambia la línea:
+5. En `edge/app.py`, cambia la línea:
    ```python
    CAMARA_INDEX = 0
    ```
@@ -59,7 +63,7 @@ a esa dirección.
    CAMARA_INDEX = "http://192.168.1.15:8080/video"
    ```
    (usa la IP que te mostró tu propia app — no copies el ejemplo literal).
-6. Guarda y ejecuta `python app.py` como siempre. El dashboard ahora mostrará la
+6. Guarda y ejecuta `python run.py` como siempre. El dashboard ahora mostrará la
    imagen del celular en el panel de cámara.
 
 ### Paso a paso (iPhone)
@@ -86,7 +90,7 @@ instalar la app, anotar la URL/IP que muestra, y pegarla en `CAMARA_INDEX`.
 ## 4. Sobre el hardware (Arduino + protoboard)
 
 El programa **no requiere hardware físico** para funcionar: si no defines
-`PUERTO_ARDUINO` en `app.py`, el sistema queda en modo 100% simulado y el panel
+`PUERTO_ARDUINO` en `edge/app.py`, el sistema queda en modo 100% simulado y el panel
 "Arduino + Protoboard" y el bombillo reaccionan igual, solo que en software.
 
 Si sí tienes un Arduino Uno/Nano/ESP32 con un relé o LED en una protoboard:
@@ -94,7 +98,7 @@ Si sí tienes un Arduino Uno/Nano/ESP32 con un relé o LED en una protoboard:
 1. Carga `arduino/rele_control/rele_control.ino` con el IDE de Arduino.
 2. Conecta el pin 8 al relé (o a un LED con resistencia de 220Ω si quieres simular
    directamente el bombillo).
-3. En `app.py`, define `PUERTO_ARDUINO = "/dev/ttyUSB0"` (Linux/Mac) o `"COM3"`
+3. En `edge/app.py`, define `PUERTO_ARDUINO = "/dev/ttyUSB0"` (Linux/Mac) o `"COM3"`
    (Windows). Puedes listar los puertos disponibles con `Actuador.listar_puertos()`.
 
 ## 5. ¿Y si no tienes ningún componente físico? — simuladores externos
@@ -121,22 +125,35 @@ del dashboard, puedes combinar este proyecto con un simulador de circuitos:
 
 ## 6. Personalización rápida
 
-- Cambiar el tiempo de espera por defecto: `TIMEOUT_INICIAL_SEG` en `app.py` (también
-  ajustable en vivo desde el dashboard).
-- Cambiar la cámara usada: `CAMARA_INDEX` en `app.py`.
+- Cambiar el tiempo de espera por defecto: `TIMEOUT_INICIAL_SEG` en `edge/app.py`
+  (también ajustable en vivo desde el dashboard).
+- Cambiar la cámara usada: `CAMARA_INDEX` en `edge/app.py`.
 - El botón **Forzar ON/OFF** en el dashboard permite "simular o controlar" el
   funcionamiento manualmente, como pediste, sin tocar código.
 
 ## 7. Estructura de archivos
 
 ```
-iot_project/
-├── app.py                     # Orquestador + servidor web (Flask-SocketIO)
-├── deteccion.py                # Etapa 1: cámara + detección
-├── transmision_mqtt.py         # Etapa 2: MQTT
-├── logica_decision.py          # Etapas 3-4: procesamiento y reglas
-├── actuador.py                 # Etapa 5: actuación (serial o simulada)
-├── templates/index.html        # Dashboard integrado
+Edge_Project_Camera/
+├── run.py                       # Punto de entrada: python run.py
+├── requirements.txt
+├── edge/                        # Capa EDGE (lo que existe hoy)
+│   ├── app.py                   # Orquestador + servidor web (Flask-SocketIO)
+│   ├── deteccion.py             # Etapa 1: cámara + detección
+│   ├── transmision_mqtt.py      # Etapa 2: MQTT
+│   ├── logica_decision.py       # Etapas 3-4: procesamiento y reglas
+│   ├── actuador.py              # Etapa 5: actuación (serial o simulada)
+│   └── templates/index.html     # Dashboard integrado
+├── fog/                         # Capa FOG (reservada para lo que pida el profesor)
+│   └── README.md                # Qué podría vivir aquí y cómo encajará con edge/
 ├── arduino/rele_control/rele_control.ino   # Firmware para Arduino real o Wokwi
-└── requirements.txt
+├── tools/                       # Scripts sueltos / utilidades de desarrollo
+│   ├── cam.py                   # Lista los índices de cámara disponibles
+│   └── voz.py                   # Reservado para una futura función de voz
+└── docs/
+    └── Manual_Ejecucion_Proyecto_IoT.docx
 ```
+
+A medida que agregues la capa fog (u otras), sigue la misma convención: un
+paquete Python con su propio `__init__.py` y módulos separados por
+responsabilidad, igual que `edge/`.

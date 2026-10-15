@@ -26,10 +26,10 @@ import cv2
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 
-from deteccion import DetectorPresencia
-from transmision_mqtt import ClienteMQTT
-from logica_decision import MotorDecision
-from actuador import Actuador
+from edge.deteccion import DetectorPresencia
+from edge.transmision_mqtt import ClienteMQTT
+from edge.logica_decision import MotorDecision
+from edge.actuador import Actuador
 
 # ---------------------------------------------------------------------
 # Configuracion
@@ -175,7 +175,11 @@ def al_control_manual(data):
     socketio.emit("estado_sistema", _ultimo_contexto)
 
 
-if __name__ == "__main__":
+def main():
     hilo = threading.Thread(target=bucle_captura, daemon=True)
     hilo.start()
     socketio.run(app, host="0.0.0.0", port=5000)
+
+
+if __name__ == "__main__":
+    main()
