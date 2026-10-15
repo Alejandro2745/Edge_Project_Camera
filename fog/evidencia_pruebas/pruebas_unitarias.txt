@@ -7,6 +7,6 @@ test_reporte_periodo (test_fog_node.TestFog.test_reporte_periodo) ... ok
 test_solo_registra_cambios_de_estado (test_fog_node.TestFog.test_solo_registra_cambios_de_estado) ... ok
 
 ----------------------------------------------------------------------
-Ran 7 tests in 0.073s
+Ran 7 tests in 0.152s
 
 OK

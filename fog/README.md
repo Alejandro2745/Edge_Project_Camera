@@ -85,15 +85,22 @@ IP en vez de `localhost` tanto en `BROKER_HOST` como en
   automático, escuchando en `localhost:1883`, conexiones anónimas locales) +
   Edge real (`python -m fog.simulacion_edge`, cámara simulada pero actuador
   real sobre el Arduino conectado por USB en `COM4`, LED en el pin 8) + Fog
-  (`fog_node.py`) escuchando ese broker. Dos corridas de 25 s, mismo patrón en
-  ambas: la luz se enciende en `t≈0.5s` y se apaga en `t≈14.5s` (coincide con
-  la ventana de actividad simulada + el timeout de 4 s), confirmado también
-  **físicamente**: el LED del pin 8 encendió y apagó en el momento esperado.
-  El Fog recibió 462 y 466 mensajes MQTT en cada corrida, agregados en 5 filas
-  por minuto con 1 activación registrada — resultados consistentes entre
-  ambas pruebas.
-- Los archivos en [`evidencia_pruebas/`](evidencia_pruebas/) son de una prueba
-  anterior en Linux con datos **simulados**; no son mediciones de este equipo.
+  (`fog_node.py`) escuchando ese broker. Primero dos corridas cortas de 25 s
+  (mismo patrón en ambas: la luz se enciende en `t≈0.5s` y se apaga en
+  `t≈14.5s`, 462 y 466 mensajes MQTT, 1 activación cada una), confirmado
+  también **físicamente**: el LED del pin 8 encendió y apagó en el momento
+  esperado. Luego una corrida de 150 s con 5 ciclos completos ON/OFF
+  (2442 mensajes MQTT → 14 filas agregadas, 5 activaciones), capturada en vivo
+  en el dashboard del Fog — ver [`evidencia_pruebas/`](evidencia_pruebas/).
+- Los archivos en [`evidencia_pruebas/`](evidencia_pruebas/) son de esta
+  última prueba (datos **reales**, de este equipo) y de `--demo` (datos
+  **simulados**, claramente marcados):
+  - `fog_dashboard_real_hoy.png` / `reporte_real_hoy.txt` — captura y reporte
+    de la corrida de 150 s con el Arduino real (datos reales, de hoy).
+  - `fog_dashboard_demo_7dias.png` / `reporte_demo_7dias_SIMULADO.txt` —
+    dashboard y reporte con `--demo` (7 días de datos simulados, banner
+    visible en el dashboard).
+  - `pruebas_unitarias.txt` — salida de `python -m unittest test_fog_node -v`.
 
 ## Estructura de la carpeta
 

@@ -1,21 +1,21 @@
-[fog] base de datos de DEMOSTRACION generada en /tmp/fog_demo2.db (datos simulados)
+[fog] base de datos de DEMOSTRACION generada en C:\Users\sanch\AppData\Local\Temp/fog_demo_ev2.db (datos simulados)
 
 REPORTE FOG - ULTIMOS 7 DIAS  (2026-10-08 a 2026-10-14)
 *** DATOS DE DEMOSTRACION (simulados), no son mediciones reales ***
-Parametros: bombillo 9.0 W | espera del sistema 1.8 W | tope de luz innecesaria evitada 4.0 h/dia
+Parametros: bombillo 9.0 W | espera del sistema 0.4 W | tope de luz innecesaria evitada 4.0 h/dia
 
 Dia         Luz ON(h) Luz OFF(h) Monit.(h) Real(kWh) Evitado(kWh) Espera(kWh) Neto(kWh) Activ.
 ----------------------------------------------------------------------------------------------
-2026-10-08       4.78      19.22     24.00     0.086        0.036       0.043    -0.007      4
-2026-10-09       6.17      17.83     24.00     0.099        0.036       0.043    -0.007      5
-2026-10-10       7.58      16.42     24.00     0.112        0.036       0.043    -0.007      5
-2026-10-11       5.38      18.62     24.00     0.092        0.036       0.043    -0.007      4
-2026-10-12       7.08      16.92     24.00     0.107        0.036       0.043    -0.007      9
-2026-10-13       5.27      18.73     24.00     0.091        0.036       0.043    -0.007      5
-2026-10-14       0.00       1.82      1.82     0.003        0.016       0.003     0.013      0
+2026-10-08       4.78      19.22     24.00     0.053        0.036       0.010     0.026      4
+2026-10-09       6.17      17.83     24.00     0.065        0.036       0.010     0.026      5
+2026-10-10       7.58      16.42     24.00     0.078        0.036       0.010     0.026      5
+2026-10-11       5.38      18.62     24.00     0.058        0.036       0.010     0.026      4
+2026-10-12       7.08      16.92     24.00     0.073        0.036       0.010     0.026      9
+2026-10-13       5.27      18.73     24.00     0.057        0.036       0.010     0.026      5
+2026-10-14       4.32      17.70     22.02     0.048        0.036       0.009     0.027      5
 ----------------------------------------------------------------------------------------------
-TOTAL           36.27     109.55    145.82     0.589        0.232       0.263    -0.030     32
+TOTAL           40.58     125.43    166.02     0.432        0.252       0.066     0.186     37
 
-Proyeccion mensual: ahorro bruto del bombillo 0.996 kWh/mes | ahorro neto (descontando la espera del sistema) -0.129 kWh/mes
-Datos: 13123500 mensajes MQTT recibidos -> 8820 filas almacenadas
+Proyeccion mensual: ahorro bruto del bombillo 1.08 kWh/mes | ahorro neto (descontando la espera del sistema) 0.795 kWh/mes
+Datos: 14941500 mensajes MQTT recibidos -> 10042 filas almacenadas
 
