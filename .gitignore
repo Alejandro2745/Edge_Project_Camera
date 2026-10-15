@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# Bases de datos del nodo Fog generadas al correr fog_node.py localmente
+fog/*.db
+fog/*.db-wal
+fog/*.db-shm
