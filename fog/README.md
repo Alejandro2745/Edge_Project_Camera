@@ -31,9 +31,11 @@ leer o publicar en esos tópicos), y depende de que tengas internet estable
 durante la sustentación.
 
 **B) Broker local (recomendado para la sustentación).**
-1. Instala Mosquitto (https://mosquitto.org/download/) y ejecútalo desde la
-   raíz del repo:
-   `"C:\Program Files\mosquitto\mosquitto.exe" -c fog\mosquitto.conf -v`
+1. Instala Mosquitto (https://mosquitto.org/download/). El instalador de
+   Windows ya deja un servicio (`Mosquitto Broker`, inicio automático)
+   escuchando en `localhost:1883` con conexiones anónimas locales — no hace
+   falta pasarle `fog\mosquitto.conf` a mano salvo que quieras personalizar
+   algo. (En esta máquina ya quedó instalado y corriendo así.)
 2. Antes de arrancar el Edge, define la variable de entorno `BROKER_HOST`
    para que apunte al broker local (no hace falta editar código —
    `edge/app.py` ya la lee):
@@ -78,7 +80,18 @@ IP en vez de `localhost` tanto en `BROKER_HOST` como en
 
 - Compila y los 7 tests unitarios pasan en Windows (verificado en este equipo).
 - `--demo --reporte semana` genera un reporte real con datos simulados (verificado en este equipo).
-- **Pendiente:** prueba end-to-end con Mosquitto local + Edge real (cámara + Arduino en `COM4`).
+- **Prueba end-to-end con hardware real, en este equipo (Windows):**
+  Mosquitto instalado como servicio de Windows (`Mosquitto Broker`, inicio
+  automático, escuchando en `localhost:1883`, conexiones anónimas locales) +
+  Edge real (`python -m fog.simulacion_edge`, cámara simulada pero actuador
+  real sobre el Arduino conectado por USB en `COM4`, LED en el pin 8) + Fog
+  (`fog_node.py`) escuchando ese broker. Dos corridas de 25 s, mismo patrón en
+  ambas: la luz se enciende en `t≈0.5s` y se apaga en `t≈14.5s` (coincide con
+  la ventana de actividad simulada + el timeout de 4 s), confirmado también
+  **físicamente**: el LED del pin 8 encendió y apagó en el momento esperado.
+  El Fog recibió 462 y 466 mensajes MQTT en cada corrida, agregados en 5 filas
+  por minuto con 1 activación registrada — resultados consistentes entre
+  ambas pruebas.
 - Los archivos en [`evidencia_pruebas/`](evidencia_pruebas/) son de una prueba
   anterior en Linux con datos **simulados**; no son mediciones de este equipo.
 
