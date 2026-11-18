@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+.env
+**/__pycache__
+**/*.pyc
+**/*.db
+**/*.db-wal
+**/*.db-shm
+venv
+.venv
+docs
+fog/evidencia_pruebas
+arduino
+*.bat
+*.pptx
+*.docx

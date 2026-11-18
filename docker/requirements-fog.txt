@@ -1,0 +1,3 @@
+# Dependencias del contenedor FOG: no usa OpenCV, por eso la imagen es liviana.
+flask==3.0.3
+paho-mqtt==1.6.1

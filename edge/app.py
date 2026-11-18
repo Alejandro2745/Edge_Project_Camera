@@ -36,8 +36,12 @@ from edge.actuador import Actuador
 # Configuracion
 # ---------------------------------------------------------------------
 USAR_MQTT = True           # False para correr todo en un solo proceso sin red
-PUERTO_ARDUINO = "COM4"      # p.ej. "/dev/ttyUSB0" o "COM3"; None = modo simulado
-TIMEOUT_INICIAL_SEG = 15   # tiempo de espera antes de apagar (ajustable en vivo)
+# Puerto del Arduino: variable de entorno PUERTO_ARDUINO (p.ej. "COM3",
+# "/dev/ttyACM0" o "/dev/ttyUSB0"). Vacío o "none" = modo simulado.
+# Sin variable se mantiene COM4, el puerto del equipo de la sustentación.
+_puerto_env = os.environ.get("PUERTO_ARDUINO", "COM4").strip()
+PUERTO_ARDUINO = None if _puerto_env.lower() in ("", "none") else _puerto_env
+TIMEOUT_INICIAL_SEG = int(os.environ.get("TIMEOUT_SEG", "15"))  # espera antes de apagar (ajustable en vivo)
 
 # Broker MQTT: por defecto el público de pruebas. Para apuntar a un Mosquitto
 # local (recomendado para probar la capa Fog, ver fog/README.md), define la
@@ -50,7 +54,10 @@ BROKER_PORT = int(os.environ.get("BROKER_PORT", "1883"))
 #   - "http://IP:8080/video" -> cámara del CELULAR vía la app "IP Webcam"
 #                                (Android) o similar. Ver README, sección
 #                                "Usar la cámara del celular".
-CAMARA_INDEX = 1
+# Se puede definir con la variable de entorno CAMARA (p.ej. CAMARA=0 o
+# CAMARA=http://192.168.1.15:8080/video). Sin variable se usa 1.
+_camara_env = os.environ.get("CAMARA", "1").strip()
+CAMARA_INDEX = int(_camara_env) if _camara_env.isdigit() else _camara_env
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "iot-edge-demo"
@@ -195,7 +202,10 @@ def al_control_manual(data):
 def main():
     hilo = threading.Thread(target=bucle_captura, daemon=True)
     hilo.start()
-    socketio.run(app, host="0.0.0.0", port=5000)
+    # allow_unsafe_werkzeug: Flask-SocketIO se niega a usar su servidor de
+    # desarrollo cuando no hay una terminal interactiva (como en Docker).
+    # Para este sistema en red local es suficiente.
+    socketio.run(app, host="0.0.0.0", port=5000, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":

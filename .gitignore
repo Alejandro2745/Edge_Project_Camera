@@ -5,3 +5,6 @@ __pycache__/
 fog/*.db
 fog/*.db-wal
 fog/*.db-shm
+
+# Configuración local de Docker Compose
+.env

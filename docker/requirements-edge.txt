@@ -1,0 +1,10 @@
+# Dependencias del contenedor EDGE (Linux). Iguales a requirements.txt, salvo:
+#  - opencv-python-headless: sin interfaz gráfica (no hace falta libGL en la imagen)
+#  - sin pygrabber: solo funciona en Windows
+flask==3.0.3
+flask-socketio==5.3.6
+python-socketio==5.11.2
+opencv-python-headless==4.10.0.84
+paho-mqtt==1.6.1
+pyserial==3.5
+numpy<2.3

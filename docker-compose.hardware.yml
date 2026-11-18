@@ -1,0 +1,16 @@
+# Solo para Linux / Raspberry Pi: le pasa al contenedor del Edge la cámara
+# USB y el Arduino del host. En Windows con Docker Desktop NO funciona (el
+# contenedor no ve los dispositivos USB); ahí usa una cámara IP o el Edge nativo.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.hardware.yml --profile edge up -d --build
+#
+# Si tu Arduino es un clon (chip CH340) aparece como /dev/ttyUSB0: define
+# ARDUINO_DEV=/dev/ttyUSB0 en el .env.
+services:
+  edge:
+    devices:
+      - "${CAMARA_DEV:-/dev/video0}:/dev/video0"
+      - "${ARDUINO_DEV:-/dev/ttyACM0}:/dev/ttyACM0"
+    environment:
+      CAMARA: "0"
+      PUERTO_ARDUINO: /dev/ttyACM0

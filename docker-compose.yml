@@ -1,0 +1,91 @@
+# Sistema Edge + Fog con Docker
+# =============================
+#   docker compose up -d --build                 -> mosquitto + fog (siempre)
+#   docker compose --profile edge up -d --build  -> + edge (cámara/Arduino)
+#   docker compose --profile demo up -d          -> + fog-demo (7 días simulados, :5002)
+#
+# En Linux / Raspberry Pi, para pasarle la cámara USB y el Arduino al Edge:
+#   docker compose -f docker-compose.yml -f docker-compose.hardware.yml --profile edge up -d --build
+#
+# La configuración (cámara, puerto del Arduino, timeout...) va en un archivo
+# .env junto a este (ver .env.example).
+
+name: edge-iluminacion
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./fog/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [iot_net]
+    restart: unless-stopped
+
+  fog:
+    build:
+      context: .
+      dockerfile: docker/fog.Dockerfile
+    image: edge-iluminacion/fog:latest
+    container_name: fog
+    environment:
+      BROKER_HOST: mosquitto
+      BROKER_PORT: "1883"
+      FOG_DB: /data/fog_datos.db
+      P_BOMBILLO_W: ${P_BOMBILLO_W:-9.0}
+      P_ESPERA_W: ${P_ESPERA_W:-0.4}
+      OLVIDO_MAX_H_DIA: ${OLVIDO_MAX_H_DIA:-4.0}
+    ports:
+      - "5001:5001"
+    volumes:
+      - fog_data:/data
+    networks: [iot_net]
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  edge:
+    profiles: [edge]
+    build:
+      context: .
+      dockerfile: docker/edge.Dockerfile
+    image: edge-iluminacion/edge:latest
+    container_name: edge
+    environment:
+      BROKER_HOST: mosquitto
+      BROKER_PORT: "1883"
+      # 0 = /dev/video0 (requiere docker-compose.hardware.yml en Linux)
+      # o una URL de cámara IP, p.ej. http://192.168.1.15:8080/video
+      CAMARA: ${CAMARA:-0}
+      # "none" = Arduino simulado; /dev/ttyACM0 con docker-compose.hardware.yml
+      PUERTO_ARDUINO: ${PUERTO_ARDUINO:-none}
+      TIMEOUT_SEG: ${TIMEOUT_SEG:-15}
+    ports:
+      - "5000:5000"
+    networks: [iot_net]
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+  fog-demo:
+    profiles: [demo]
+    image: edge-iluminacion/fog:latest
+    build:
+      context: .
+      dockerfile: docker/fog.Dockerfile
+    container_name: fog-demo
+    environment:
+      FOG_WEB_PORT: "5002"
+    command: ["python", "fog_node.py", "--demo", "--db", "/tmp/fog_demo.db"]
+    ports:
+      - "5002:5002"
+    networks: [iot_net]
+    restart: unless-stopped
+
+networks:
+  iot_net:
+    driver: bridge
+
+volumes:
+  fog_data:

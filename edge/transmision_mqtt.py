@@ -11,6 +11,7 @@ real, cambia BROKER_HOST por tu propio broker (Mosquitto local, HiveMQ, etc).
 
 import json
 import threading
+import uuid
 import paho.mqtt.client as mqtt
 
 TOPIC_DETECCION = "iot_edge/deteccion"
@@ -25,8 +26,12 @@ class ClienteMQTT:
         self.on_deteccion_callback = on_deteccion
         self._conectado = False
 
-        self.client = mqtt.Client(client_id=f"iot_edge_{client_id_suffix}",
-                                   clean_session=True)
+        # Sufijo aleatorio: si dos Edge (p.ej. el contenedor y uno nativo)
+        # usan el mismo client_id, el broker desconecta a uno cada vez
+        # que el otro se conecta.
+        self.client = mqtt.Client(
+            client_id=f"iot_edge_{client_id_suffix}_{uuid.uuid4().hex[:6]}",
+            clean_session=True)
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect

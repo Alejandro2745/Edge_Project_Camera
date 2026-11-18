@@ -12,9 +12,15 @@ Fuente de video admitida (parámetro `camera_index`):
     (Android/iOS), en la misma red WiFi que el computador.
 """
 
-import cv2
+import sys
 import time
+
+import cv2
 import numpy as np
+
+# DirectShow (CAP_DSHOW) solo existe en Windows. En Linux / Raspberry Pi /
+# contenedor Docker se usa el backend por defecto de OpenCV (V4L2).
+_BACKEND_LOCAL = cv2.CAP_DSHOW if sys.platform.startswith("win") else cv2.CAP_ANY
 
 
 class DetectorPresencia:
@@ -45,15 +51,16 @@ class DetectorPresencia:
     @staticmethod
     def _abrir_captura(fuente):
         """
-        Abre `fuente` con OpenCV. Para un índice local (int) fuerza el
-        backend DirectShow (CAP_DSHOW): es el mismo backend que usa
+        Abre `fuente` con OpenCV. Para un índice local (int) en Windows
+        fuerza el backend DirectShow (CAP_DSHOW; en Linux/Docker se usa
+        V4L2 por defecto): es el mismo backend que usa
         `listar_camaras()` para enumerar los dispositivos, así que el
         índice que ve el usuario en el dashboard coincide con el que
         realmente abre OpenCV. Para una URL de red se deja el backend
         por defecto.
         """
         if isinstance(fuente, int):
-            return cv2.VideoCapture(fuente, cv2.CAP_DSHOW)
+            return cv2.VideoCapture(fuente, _BACKEND_LOCAL)
         return cv2.VideoCapture(fuente)
 
     @staticmethod
@@ -78,7 +85,7 @@ class DetectorPresencia:
 
         camaras = []
         for i in range(max_indices):
-            cap = cv2.VideoCapture(i, cv2.CAP_DSHOW)
+            cap = cv2.VideoCapture(i, _BACKEND_LOCAL)
             if cap.isOpened():
                 camaras.append({"indice": i, "nombre": f"Cámara {i}"})
             cap.release()

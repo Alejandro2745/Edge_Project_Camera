@@ -42,6 +42,66 @@ las variables de entorno `BROKER_HOST`/`BROKER_PORT` antes de ejecutar `python r
 (no hace falta editar código), o pon `USAR_MQTT = False` en `edge/app.py` para que todo
 corra en un solo proceso sin red.
 
+## 2.1 Ejecución con Docker
+
+El sistema se despliega en **tres contenedores** sobre una red `iot_net`
+(ver [`docker-compose.yml`](docker-compose.yml)):
+
+| Servicio | Imagen | Puerto | Notas |
+|---|---|---|---|
+| `mosquitto` | `eclipse-mosquitto:2` | 1883 | Broker MQTT, usa [`fog/mosquitto.conf`](fog/mosquitto.conf) (solo lectura) |
+| `fog` | [`docker/fog.Dockerfile`](docker/fog.Dockerfile) (python:3.11-slim) | 5001 | Volumen `fog_data` → `/data/fog_datos.db`; healthcheck a `/api/estado` |
+| `edge` | [`docker/edge.Dockerfile`](docker/edge.Dockerfile) (python:3.11-slim + OpenCV headless) | 5000 | Perfil `edge`: solo se levanta donde hay cámara/Arduino que pasarle |
+| `fog-demo` | misma imagen que `fog` | 5002 | Perfil `demo`: 7 días de datos **simulados** |
+
+Todos usan `restart: unless-stopped`. Dentro de la red, el Edge y el Fog
+encuentran el broker por nombre (`BROKER_HOST=mosquitto`).
+
+**Configuración:** copia [`.env.example`](.env.example) como `.env` y ajusta
+la cámara, el puerto del Arduino, el timeout y el modelo de energía.
+
+### Linux o Raspberry Pi (despliegue objetivo, Edge en contenedor)
+
+[`docker-compose.hardware.yml`](docker-compose.hardware.yml) le pasa al Edge
+`/dev/video0` (cámara USB) y `/dev/ttyACM0` (Arduino; los clones CH340 son
+`/dev/ttyUSB0`: define `ARDUINO_DEV` en el `.env`).
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.hardware.yml --profile edge up -d --build
+```
+
+### Windows 11 con Docker Desktop
+
+Docker Desktop **no** le pasa al contenedor la webcam USB ni el puerto serie
+(haría falta `usbipd-win` hacia WSL2). Hay dos opciones:
+
+- **A) Broker y Fog en Docker y Edge nativo** (con webcam USB y Arduino real):
+  ```bat
+  docker compose up -d --build
+  set BROKER_HOST=localhost&& python run.py
+  ```
+- **B) Todo en Docker con la cámara del celular** (Arduino simulado): pon
+  `CAMARA=http://IP_DEL_CELULAR:8080/video` en el `.env` (ver sección 3) y:
+  ```bash
+  docker compose --profile edge up -d --build
+  ```
+
+> Si el servicio de Windows **Mosquitto Broker** está instalado, ocupa el
+> puerto 1883 y el contenedor `mosquitto` no puede arrancar. Detenlo antes
+> (`net stop mosquitto` como administrador) o usa solo uno de los dos.
+
+### Comandos útiles
+
+```bash
+docker compose --profile demo up -d                 # agrega el Fog de demostración en :5002
+docker compose ps                                   # estado (el fog muestra "healthy")
+docker compose logs -f fog                          # ver logs de un servicio
+docker compose exec fog python fog_node.py --reporte semana
+docker compose exec fog python -m unittest test_fog_node -v
+docker compose --profile edge --profile demo down   # detener todo (la BD se conserva)
+docker compose down -v                              # detener y BORRAR el volumen fog_data
+```
+
 ## 3. Usar la cámara del celular (en vez de la webcam del computador)
 
 Tus diapositivas de "Flujo de Datos" describen que **el celular** es quien captura
@@ -129,7 +189,11 @@ del dashboard, puedes combinar este proyecto con un simulador de circuitos:
 
 - Cambiar el tiempo de espera por defecto: `TIMEOUT_INICIAL_SEG` en `edge/app.py`
   (también ajustable en vivo desde el dashboard).
-- Cambiar la cámara usada: `CAMARA_INDEX` en `edge/app.py`.
+- Cambiar la cámara usada: variable de entorno `CAMARA` (índice o URL), o
+  `CAMARA_INDEX` en `edge/app.py`.
+- Puerto del Arduino: variable de entorno `PUERTO_ARDUINO` (`COM3`,
+  `/dev/ttyACM0`, o `none` para modo simulado).
+- Tiempo de espera inicial también por variable de entorno: `TIMEOUT_SEG`.
 - El botón **Forzar ON/OFF** en el dashboard permite "simular o controlar" el
   funcionamiento manualmente, como pediste, sin tocar código.
 
@@ -139,6 +203,14 @@ del dashboard, puedes combinar este proyecto con un simulador de circuitos:
 Edge_Project_Camera/
 ├── run.py                       # Punto de entrada: python run.py
 ├── requirements.txt
+├── docker-compose.yml           # mosquitto + fog (+ edge y fog-demo por perfil)
+├── docker-compose.hardware.yml  # Linux/RPi: pasa cámara USB y Arduino al Edge
+├── .env.example                 # Configuración de Docker Compose (copiar a .env)
+├── docker/                      # Dockerfiles y requirements por servicio
+│   ├── edge.Dockerfile
+│   ├── fog.Dockerfile
+│   ├── requirements-edge.txt
+│   └── requirements-fog.txt
 ├── edge/                        # Capa EDGE (lo que existe hoy)
 │   ├── app.py                   # Orquestador + servidor web (Flask-SocketIO)
 │   ├── deteccion.py             # Etapa 1: cámara + detección
